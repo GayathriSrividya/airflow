@@ -1,0 +1,1 @@
+Fixed order_by=rendered_map_index sorting mapped task instances lexicographically instead of numerically when custom labels are not set.

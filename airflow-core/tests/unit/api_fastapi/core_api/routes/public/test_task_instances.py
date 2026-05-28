@@ -856,10 +856,12 @@ class TestGetMappedTaskInstances:
             ({"order_by": "-logical_date", "limit": 100}, list(range(109, 9, -1))),
             ({"order_by": "data_interval_start", "limit": 100}, list(range(100))),
             ({"order_by": "-data_interval_start", "limit": 100}, list(range(109, 9, -1))),
-            ({"order_by": "rendered_map_index", "limit": 100}, sorted(range(110), key=str)[:100]),
+            # rendered_map_index with no custom labels: must sort numerically, not
+            # lexicographically (regression for #67451: "10" was sorted before "2").
+            ({"order_by": "rendered_map_index", "limit": 100}, list(range(100))),
             (
                 {"order_by": "-rendered_map_index", "limit": 100},
-                sorted(range(110), key=str, reverse=True)[:100],
+                list(range(109, 9, -1)),
             ),
         ],
     )
@@ -929,6 +931,23 @@ class TestGetMappedTaskInstances:
         body = response.json()
         assert body["total_entries"] == len(expected_map_indexes)
         assert [ti["map_index"] for ti in body["task_instances"]] == expected_map_indexes
+
+    def test_rendered_map_index_order_is_numeric_not_lexicographic(
+        self, test_client, session, one_task_with_many_mapped_tis
+    ):
+        """Regression test for #67451: order_by=rendered_map_index must sort integers
+        in numeric order (0, 1, 2, ..., 10, 11) not lexicographic order
+        (0, 1, 10, 100, ..., 11, 2, 20, ...)."""
+        response = test_client.get(
+            "/dags/mapped_tis/dagRuns/run_mapped_tis/taskInstances/task_2/listMapped",
+            params={"order_by": "rendered_map_index"},
+        )
+        assert response.status_code == 200
+        map_indexes = [ti["map_index"] for ti in response.json()["task_instances"]]
+        # Numeric order: 0, 1, 2, ..., 49 (first 50 from default page size)
+        assert map_indexes == list(range(50))
+        # Confirm it is NOT the old lexicographic order (which would put 10 before 2)
+        assert map_indexes.index(10) > map_indexes.index(2)
 
     def test_with_date(self, test_client, one_task_with_mapped_tis):
         response = test_client.get(

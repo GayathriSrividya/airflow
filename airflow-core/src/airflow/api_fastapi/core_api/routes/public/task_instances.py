@@ -217,6 +217,14 @@ def get_mapped_task_instances(
                     "data_interval_start": DagRun.data_interval_start,
                     "data_interval_end": DagRun.data_interval_end,
                 },
+                sort_replace={
+                    # ``rendered_map_index`` falls back to ``CAST(map_index AS TEXT)`` in
+                    # SQL which sorts lexicographically ("10" < "2"). Override with a two-
+                    # column sort: first by the stored string label (when set), then by the
+                    # integer ``map_index`` so purely-numeric mapped tasks sort as 0, 1, 2 …
+                    # 10, 11 instead of 0, 1, 10, 11 … 2, 20.
+                    "rendered_map_index": [TI._rendered_map_index, TI.map_index],
+                },
             ).dynamic_depends(default="map_index")
         ),
     ],

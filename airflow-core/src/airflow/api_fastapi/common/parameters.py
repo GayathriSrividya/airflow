@@ -543,12 +543,17 @@ class SortParam(BaseParam[list[str]]):
     MAX_SORT_PARAMS = 10
 
     def __init__(
-        self, allowed_attrs: list[str], model: Base, to_replace: dict[str, str | Column] | None = None
+        self,
+        allowed_attrs: list[str],
+        model: Base,
+        to_replace: dict[str, str | Column] | None = None,
+        sort_replace: dict[str, ColumnElement | list[ColumnElement]] | None = None,
     ) -> None:
         super().__init__()
         self.allowed_attrs = allowed_attrs
         self.model = model
         self.to_replace = to_replace
+        self.sort_replace = sort_replace
         self._cached_resolution: list[tuple[str, ColumnElement, bool]] | None = None
 
     def set_value(self, value: list[str] | None) -> Self:
@@ -591,6 +596,21 @@ class SortParam(BaseParam[list[str]]):
                     f"Ordering with '{lstriped_orderby}' is disallowed or "
                     f"the attribute does not exist on the model",
                 )
+
+            # ``sort_replace`` overrides ORDER BY columns without affecting cursor encoding
+            # (``to_replace`` / ``row_value``). Useful when the sort expression for a key
+            # differs from the value stored in the cursor token — e.g. splitting a hybrid
+            # property into multiple typed columns so each part sorts correctly.
+            if self.sort_replace and attr_name in self.sort_replace:
+                sort_replacement = self.sort_replace[attr_name]
+                is_desc = order_by_value.startswith("-")
+                if isinstance(sort_replacement, (list, tuple)):
+                    for col in sort_replacement:
+                        resolved.append((attr_name, col, is_desc))
+                else:
+                    resolved.append((attr_name, sort_replacement, is_desc))
+                continue
+
             if column is None:
                 column = getattr(self.model, lstriped_orderby)
 
