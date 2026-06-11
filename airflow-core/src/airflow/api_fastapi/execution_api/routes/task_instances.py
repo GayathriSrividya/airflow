@@ -543,7 +543,14 @@ def _create_ti_state_update_query_and_update_state(
         # calculate the duration for TI table too
         query = TI.duration_expression_update(ti_patch_payload.end_date, query, session.bind)
         # clear the next_method and next_kwargs so that none of the retries pick them up
-        query = query.values(state=TaskInstanceState.UP_FOR_RESCHEDULE, next_method=None, next_kwargs=None)
+        reschedule_values: dict[str, Any] = {
+            "state": TaskInstanceState.UP_FOR_RESCHEDULE,
+            "next_method": None,
+            "next_kwargs": None,
+        }
+        if ti_patch_payload.rendered_map_index is not None:
+            reschedule_values["rendered_map_index"] = ti_patch_payload.rendered_map_index
+        query = query.values(reschedule_values)
         updated_state = TaskInstanceState.UP_FOR_RESCHEDULE
     else:
         raise ValueError(f"Unexpected Payload Type {type(ti_patch_payload)}")

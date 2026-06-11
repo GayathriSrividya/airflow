@@ -1266,6 +1266,7 @@ class ActivitySubprocess(WatchedSubprocess):
             self.client.task_instances.defer(self.id, msg)
         elif isinstance(msg, RescheduleTask):
             self._terminal_state = TaskInstanceState.UP_FOR_RESCHEDULE
+            self._rendered_map_index = msg.rendered_map_index
             self.client.task_instances.reschedule(self.id, msg)
         elif isinstance(msg, SkipDownstreamTasks):
             self.client.task_instances.skip_downstream_tasks(self.id, msg)

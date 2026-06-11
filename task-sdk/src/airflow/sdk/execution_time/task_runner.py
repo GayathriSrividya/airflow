@@ -1144,7 +1144,9 @@ def run(
     except AirflowRescheduleException as reschedule:
         log.info("Rescheduling task, marking task as UP_FOR_RESCHEDULE")
         msg = RescheduleTask(
-            reschedule_date=reschedule.reschedule_date, end_date=datetime.now(tz=timezone.utc)
+            reschedule_date=reschedule.reschedule_date,
+            end_date=datetime.now(tz=timezone.utc),
+            rendered_map_index=ti.rendered_map_index,
         )
         state = TaskInstanceState.UP_FOR_RESCHEDULE
     except (AirflowFailException, AirflowSensorTimeout) as e:
@@ -1687,6 +1689,7 @@ def main():
                 msg=RescheduleTask(
                     reschedule_date=reschedule.reschedule_date,
                     end_date=datetime.now(tz=timezone.utc),
+                    rendered_map_index=None,
                 )
             )
             sys.exit(0)
